@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D to 3D 변환 with Chat</title>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.10/dist/purify.min.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <h1 class="main-title">text-2d-3d</h1>
+
+        <div class="top-right-controls">
+            <button id="themeToggleButton" class="top-corner-btn" title="테마 전환">🌙</button>
+            <button id="settingsButton" class="top-corner-btn" title="설정">⚙️</button>
+        </div>
+
+        <div class="main-container">
+
+            <div class="chat-section">
+                <div class="section-header">
+                    AI 채팅
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="assistant-message welcome-message">
+                        원하는 이미지를 말씀해주시면 생성해드리고 3D 모델로 변환해드릴게요. 또는 이미지를 업로드하셔도 됩니다.
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <form class="chat-input-form" id="chatForm" onsubmit="return false;">
+                        <textarea class="chat-input" id="chatInput" placeholder="메시지를 입력하세요..." rows="1"></textarea>
+                        <button type="button" class="chat-action-btn" id="uploadBtn" title="이미지 업로드">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                            </svg>
+                        </button>
+                    </form>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+            </div>
+
+            <div class="image-section">
+                <div class="section-header">생성된 이미지</div>
+                <div class="content-area">
+                    <div class="placeholder-text" id="imagePlaceholder">
+                        이미지가 여기에 표시됩니다
+                    </div>
+                    <img id="generatedImage" class="image-display" style="display: none;" alt="생성된 이미지">
+                    <div class="loading-overlay" id="imageLoading" style="display: none;">
+                        <div class="spinner"></div>
+                        <span>이미지 로딩중...</span>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="control-btn" id="convertBtn" style="display: none;" title="3D로 변환">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                    </button>
+                    <button class="control-btn" id="downloadImageBtn" style="display: none;" title="이미지 저장">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="model-section">
+                <div class="section-header">3D 모델</div>
+                <div class="content-area">
+                    <div class="placeholder-text" id="modelPlaceholder">
+                        3D 모델이 여기에 표시됩니다
+                    </div>
+                    <div id="modelViewer" class="model-viewer" style="display: none;"></div>
+                    <div class="loading-overlay" id="modelLoading" style="display: none;">
+                        <div class="spinner"></div>
+                        <span>모델 로딩중...</span>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="control-btn" id="downloadModelBtn" style="display: none;" title="3D 모델 저장">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </button>
+                    <button class="control-btn" id="resetViewBtn" style="display: none;" title="뷰 리셋">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="settingsPanel" class="settings-panel">
+                <div class="settings-content">
+                    <div class="settings-header">
+                        <h2>⚙️ 설정</h2>
+                        </div>
+                    <div class="settings-body">
+                        <div class="setting-group">
+                            <h3>Gemma-3 설정</h3>
+                            <div class="setting-row" title="답변의 창의성을 조절합니다. 높을수록 다양하고 무작위적인 답변이 나옵니다.">
+                                <label for="temperatureSlider">온도 (Temperature)</label>
+                                <div class="slider-container">
+                                    <input type="range" id="temperatureSlider" min="0.1" max="1.0" step="0.1" value="0.7">
+                                    <span id="temperatureValue">0.7</span>
+                                </div>
+                            </div>
+                            <div class="setting-row" title="챗봇이 한 번에 생성하는 답변의 최대 길이입니다.">
+                                <label for="maxTokensSlider">최대 토큰 (Max Tokens)</label>
+                                <div class="slider-container">
+                                    <input type="range" id="maxTokensSlider" min="64" max="2048" step="64" value="512">
+                                    <span id="maxTokensValue">512</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <h3>3D 모델링 설정</h3>
+                            <div class="setting-row" title="3D 모델 생성 시 추론 단계 수입니다. 높을수록 품질이 향상될 수 있지만 시간이 오래 걸립니다.">
+                                <label for="inferenceStepsInput">추론 단계 수</label>
+                                <input type="number" id="inferenceStepsInput" class="settings-input" value="5" min="1" max="50">
+                            </div>
+                            <div class="setting-row" title="모델의 디테일 수준을 결정합니다. 높을수록 더 정교한 모델이 생성됩니다.">
+                                <label for="octreeResolutionInput">Octree 해상도</label>
+                                <input type="number" id="octreeResolutionInput" class="settings-input" value="380" min="64" max="512">
+                            </div>
+                            <div class="setting-row" title="모델 생성 시 재현성을 보장하기 위한 시드 값입니다.">
+                                <label for="seedInput">시드 (Seed)</label>
+                                <input type="number" id="seedInput" class="settings-input" value="12345" min="0">
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <h3>뷰어 설정</h3>
+                            <div class="setting-row" title="모델을 자동으로 회전시킬지 결정합니다.">
+                                <label for="autoRotateCheck">자동 회전</label>
+                                <input type="checkbox" id="autoRotateCheck" checked>
+                            </div>
+                            <div class="setting-row" title="자동 회전 속도를 조절합니다.">
+                                <label for="rotateSpeedSlider">회전 속도</label>
+                                <div class="slider-container">
+                                    <input type="range" id="rotateSpeedSlider" min="0.1" max="5" step="0.1" value="1">
+                                    <span id="rotateSpeedValue">1.0</span>
+                                </div>
+                            </div>
+                            <div class="setting-row" title="카메라의 시야각(Field of View)을 조절합니다.">
+                                <label for="fovSlider">시야각 (FOV)</label>
+                                <div class="slider-container">
+                                    <input type="range" id="fovSlider" min="30" max="120" step="1" value="75">
+                                    <span id="fovValue">75</span>
+                                </div>
+                            </div>
+                            <div class="setting-row" title="장면에 비추는 기본 조명의 밝기를 조절합니다.">
+                                <label for="directionalLightSlider">주 조명 밝기</label>
+                                <div class="slider-container">
+                                    <input type="range" id="directionalLightSlider" min="0" max="3" step="0.1" value="1.5">
+                                    <span id="directionalLightValue">1.5</span>
+                                </div>
+                            </div>
+                            <div class="setting-row" title="좌표축(X, Y, Z)의 표시 여부를 결정합니다.">
+                                <label for="axesHelperCheck">좌표축 표시</label>
+                                <input type="checkbox" id="axesHelperCheck" checked>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/js/main2.js"></script>
+</body>
+</html>
